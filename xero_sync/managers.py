@@ -76,7 +76,7 @@ class XeroManager(models.Manager):
             if isinstance(value, datetime):
                 value = timezone.make_aware(value)
             setattr(obj, self.get_local_field_name(key), value)
-        for key, value in extra:
+        for key, value in extra.items():
             setattr(obj, key, value)
         obj.save()
         if hasattr(obj, 'on_sync'):

@@ -22,6 +22,8 @@ class Account(models.Model):
 
     objects = managers.XeroManager()
 
+    def __str__(self):
+        return self.name
 
 class Activity(models.Model):
     id = models.TextField(primary_key=True)
@@ -29,6 +31,9 @@ class Activity(models.Model):
     status = models.TextField()
 
     objects = managers.TrackingCategoryManager()
+
+    def __str__(self):
+        return self.name
 
     class Meta:
         verbose_name_plural = 'activities'
@@ -46,15 +51,21 @@ class Journal(models.Model):
     objects = managers.XeroManager(
         sync_method='offset', sync_field='JournalNumber')
 
+    def __str__(self):
+        return (
+            '[{0.journal_number}] {0.journal_date:%Y-%m-%d} - {0.reference}'
+            .format(self))
+
     def on_sync(self, record):
-        for item in record['JournalLine']:
+        for item in record['JournalLines']:
             JournalLine.objects.apply_changes(item, journal=self)
 
 
 class JournalLine(models.Model):
     id = models.TextField(primary_key=True)
-    journal = models.ForeignKey(Journal, models.PROTECT)
-    account = models.ForeignKey(Account, models.PROTECT)
+    journal = models.ForeignKey(Journal, models.PROTECT, related_name='lines')
+    account = models.ForeignKey(Account, models.PROTECT,
+                                related_name='journal_lines')
     description = models.TextField()
     net_amount = models.DecimalField(max_digits=11, decimal_places=2)
     gross_amount = models.DecimalField(max_digits=11, decimal_places=2)
@@ -64,6 +75,10 @@ class JournalLine(models.Model):
     activities = models.ManyToManyField(Activity)
 
     objects = managers.XeroManager(sync_method=None)
+
+    def __str__(self):
+        return ('{0.account.name}: {0.gross_amount} ({0.description})'
+                .format(self))
 
     def on_sync(self, record):
         options = (c['TrackingOptionID'] for c in record['TrackingCategories']
